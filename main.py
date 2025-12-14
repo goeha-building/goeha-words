@@ -1,23 +1,21 @@
 import tkinter as tk
+import customtkinter
+
+class App(customtkinter.CTk):
+    def __init__(self):
+        super().__init__()
+        self.geometry("400x150")
+
+        self.button = customtkinter.CTkButton(self, text="my button", command=self.button_callbck)
+        self.button.pack(padx=20, pady=20)
+
+    def button_callbck(self):
+        print("button clicked")
+
 
 def main():
-    print("Hello from goeha-words!")
-
-    WINDOW_WIDTH = 800
-    WINDOW_HEIGHT = 600
-    root: tk.Tk = tk.Tk()
-    root.title("goeha-words")
-    root.geometry(f"{(WINDOW_WIDTH)}x{WINDOW_HEIGHT}")
-    canvas = tk.Canvas(
-    master=root,
-    width=WINDOW_WIDTH,
-    height=WINDOW_HEIGHT,
-    bg="white",
-    )
-    canvas.pack()
-
-    root.mainloop()
-
+    app = App()
+    app.mainloop()
 
 if __name__ == "__main__":
     main()
