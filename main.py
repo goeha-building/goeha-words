@@ -10,12 +10,13 @@ class App(customtkinter.CTk):
         self.button = customtkinter.CTkButton(
             self, text="리스트 바꾸기", command=self.btn_callback_list_change
         )
-        self.button.pack(padx=20, pady=20)
 
         self.button2 = customtkinter.CTkButton(
             self, text="리스트 수정", command=self.btn_callback_list_edit
         )
-        self.button2.pack(padx=20, pady=20)
+        self.grid_columnconfigure(0, weight=1)
+        self.button.grid(row=0, column=1, padx=20, pady=20, sticky="e")
+        self.button2.grid(row=1, column=1, padx=20, pady=20, sticky="e")
 
     def btn_callback_list_change(self):
         print("리스트바꾸기!")
