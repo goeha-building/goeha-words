@@ -13,7 +13,7 @@ class App(customtkinter.CTk):
         self.button.pack(padx=20, pady=20)
 
         self.button2 = customtkinter.CTkButton(
-            self, text="리스트 수정", command=self.button_callbck
+            self, text="리스트 수정", command=self.btn_callback_list_edit
         )
         self.button2.pack(padx=20, pady=20)
 
