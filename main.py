@@ -1,7 +1,6 @@
 import tkinter as tk
 import customtkinter
 import sqlite3
-import sqlite3
 from typing import Callable
 
 DB_NAME = "goeha_words.db"
