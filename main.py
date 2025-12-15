@@ -125,9 +125,11 @@ class WordModal(customtkinter.CTkToplevel):
     ):
         super().__init__(parent)
         self.title(title)
+
+        # 모달 자1식 창 크기
         self.geometry("300x200")
 
-        # 부1모 창 클릭 안되게 함.
+        # 부1모 창 클릭 안되게 하는 코드입니다!
         self.grab_set()
         self.focus()
 
