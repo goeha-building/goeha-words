@@ -125,9 +125,16 @@ class SqliteManager:
 
 
 class WordManager:
-    sq_manager: SqliteManager
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self) -> None:
+        if hasattr(self, "sq_manager"):
+            return
         self.sq_manager = SqliteManager()
 
     def save_word(self, word: WordDict):
@@ -233,8 +240,63 @@ class App(customtkinter.CTk):
             sticky="e",
         )
         self.update_clock()
+        # --- [추가된 스톱워치 UI] ---
+        # 1. 구분선 (선택사항, 시각적 분리)
+        self.separator = customtkinter.CTkLabel(self, text="------ Stopwatch ------")
+        self.separator.grid(row=3, column=1, padx=20, pady=(20, 5), sticky="e")
+
+        # 2. 스톱워치 시간 표시
+        self.sw_label = customtkinter.CTkLabel(
+            self, text="00:00.0", font=("Arial", 30, "bold"), text_color="#FF9900"
+        )
+        self.sw_label.grid(row=4, column=1, padx=20, pady=5, sticky="e")
+
+        # 3. 시작/정지 버튼
+        self.btn_sw_start = customtkinter.CTkButton(
+            self, text="Start", command=self.toggle_stopwatch, fg_color="green"
+        )
+        self.btn_sw_start.grid(row=5, column=1, padx=20, pady=5, sticky="e")
+
+        # 4. 리셋 버튼
+        self.btn_sw_reset = customtkinter.CTkButton(
+            self, text="Reset", command=self.reset_stopwatch, fg_color="gray"
+        )
+        self.btn_sw_reset.grid(row=6, column=1, padx=20, pady=5, sticky="e")
+        self.reset_stopwatch()
 
     # 여기서 부터 app에 쓸 함수 정의
+    # --- [스톱워치 로직 함수들] ---
+    def toggle_stopwatch(self):
+        if self.sw_running:
+            # 멈춤 로직
+            self.sw_running = False
+            self.btn_sw_start.configure(text="Start", fg_color="green")
+        else:
+            # 시작 로직
+            self.sw_running = True
+            self.btn_sw_start.configure(text="Stop", fg_color="red")
+            self.update_stopwatch()  # 카운트 시작
+
+    def reset_stopwatch(self):
+        self.sw_running = False
+        self.sw_counter = 0
+        self.sw_label.configure(text="00:00.0")
+        self.btn_sw_start.configure(text="Start", fg_color="green")
+
+    def update_stopwatch(self):
+        if self.sw_running:
+            self.sw_counter += 1
+
+            # 시간을 분:초.밀리초 형식으로 변환 (0.1초 단위 기준)
+            total_seconds = self.sw_counter // 10
+            deciseconds = self.sw_counter % 10
+            minutes, seconds = divmod(total_seconds, 60)
+
+            time_str = f"{minutes:02d}:{seconds:02d}.{deciseconds}"
+            self.sw_label.configure(text=time_str)
+
+            # 100ms(0.1초) 뒤에 다시 호출
+            self.after(100, self.update_stopwatch)
 
     def save_word(
         self,
