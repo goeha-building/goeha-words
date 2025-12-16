@@ -249,7 +249,6 @@ class App(customtkinter.CTk):
             sticky="e",
         )
         self.update_clock()
-        self.separator = customtkinter.CTkLabel(self, text="------ Stopwatch ------")
         self.separator.grid(row=3, column=1, padx=20, pady=(20, 5), sticky="e")
 
         # 스톱워치 ui
