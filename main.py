@@ -14,6 +14,8 @@ class WordDict(TypedDict):
     id: str | None
     word: str
     meaning: str
+    example: str | None
+    hardness: int 
 
 
 # 바-이브-로-만든ㄻ
@@ -138,6 +140,8 @@ class WordManager:
         self.sq_manager = SqliteManager()
 
     def save_word(self, word: WordDict):
+        word.hardness = -1
+
         self.sq_manager.insert(
             table=TABLE_NAME,
             data=dict(word),
