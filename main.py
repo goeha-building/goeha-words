@@ -182,6 +182,7 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
         self.geometry("700x500")
+
         self.db = SqliteManager()
         self.db.query(
             f"""
@@ -196,9 +197,7 @@ class App(customtkinter.CTk):
             table=TABLE_NAME,
         )
         print(all_words)
-        self.clock_label = customtkinter.CTkLabel(
-            self, text="00:00:00", font=("Arial", 24, "bold")  # 폰트 크기 24, 굵게
-        )
+        self.grid_columnconfigure(0, weight=1)
 
         self.button = customtkinter.CTkButton(
             self, text="단어추가", command=self.btn_callback_add_word
@@ -207,7 +206,10 @@ class App(customtkinter.CTk):
         self.button2 = customtkinter.CTkButton(
             self, text="리스트 수정", command=self.btn_callback_list_edit
         )
-        self.grid_columnconfigure(0, weight=1)
+        # 시계
+        self.clock_label = customtkinter.CTkLabel(
+            self, text="00:00:00", font=("Arial", 24, "bold")  # 폰트 크기 24, 굵게
+        )
         self.clock_label.grid(
             row=0,
             column=1,
@@ -215,6 +217,7 @@ class App(customtkinter.CTk):
             pady=(20, 10),
             sticky="e",
         )
+
         self.button.grid(
             row=1,
             column=1,
@@ -258,9 +261,9 @@ class App(customtkinter.CTk):
         print("✅ DB 저장 완료!")
 
     def update_clock(self):
-        current_time = time.strftime("%H:%M:%S") 
+        current_time = time.strftime("%H:%M:%S")
         self.clock_label.configure(text=current_time)
-        self.after(1000, self.update_clock)  
+        self.after(1000, self.update_clock)
 
 
 def main():
