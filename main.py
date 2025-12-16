@@ -3,10 +3,29 @@ import customtkinter
 import sqlite3
 from typing import Callable
 
+
+# 변수
 DB_NAME = "goeha_words.db"
 TABLE_NAME = "words_table"
 
 
+class WordSchema:
+    index: int | None
+    word: str
+    meaning: str
+
+    def __init__(
+        self,
+        word: str,
+        meaning: str,
+    ):
+        self.index = None
+        self.word = word
+        self.meaning = meaning
+        pass
+
+
+# 바-이브-로-만든ㄻ
 class SqliteManager:
     _instance = None
 
@@ -27,8 +46,6 @@ class SqliteManager:
 
     def close(self):
         self.conn.close()
-
-    # --- 👇 여기가 핵심! CRUD 자동화 함수들 ---
 
     def insert(self, table, data: dict):
         """
@@ -195,6 +212,15 @@ class App(customtkinter.CTk):
             pady=20,
             sticky="e",
         )
+
+    # 여기서 부터 app에 쓸 함수 정의
+
+    def save_word(
+        self,
+    ):
+        print("단어추가 시작")
+
+        pass
 
     def btn_callback_add_word(self):
         print("단어추가!")
