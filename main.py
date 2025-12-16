@@ -1,7 +1,7 @@
-import tkinter as tk
+import time
 import customtkinter
 import sqlite3
-from typing import Callable
+from typing import Callable, TypedDict, List
 
 
 # 변수
@@ -9,20 +9,11 @@ DB_NAME = "goeha_words.db"
 TABLE_NAME = "words_table"
 
 
-class WordSchema:
-    index: int | None
+# TODO WordDict의 스키마 정하기
+class WordDict(TypedDict):
+    id: str | None
     word: str
     meaning: str
-
-    def __init__(
-        self,
-        word: str,
-        meaning: str,
-    ):
-        self.index = None
-        self.word = word
-        self.meaning = meaning
-        pass
 
 
 # 바-이브-로-만든ㄻ
@@ -133,6 +124,19 @@ class SqliteManager:
             return self.cursor.lastrowid
 
 
+class WordManager:
+    sq_manager: SqliteManager
+
+    def __init__(self) -> None:
+        self.sq_manager = SqliteManager()
+
+    def save_word(self, word: WordDict):
+        self.sq_manager.insert(
+            table=TABLE_NAME,
+            data=dict(word),
+        )
+
+
 class WordModal(customtkinter.CTkToplevel):
     def __init__(
         self,
@@ -173,6 +177,8 @@ class WordModal(customtkinter.CTkToplevel):
 
 
 class App(customtkinter.CTk):
+    _words = List
+
     def __init__(self):
         super().__init__()
         self.geometry("700x500")
@@ -190,6 +196,10 @@ class App(customtkinter.CTk):
             table=TABLE_NAME,
         )
         print(all_words)
+        self.clock_label = customtkinter.CTkLabel(
+            self, text="00:00:00", font=("Arial", 24, "bold")  # 폰트 크기 24, 굵게
+        )
+
         self.button = customtkinter.CTkButton(
             self, text="단어추가", command=self.btn_callback_add_word
         )
@@ -198,20 +208,28 @@ class App(customtkinter.CTk):
             self, text="리스트 수정", command=self.btn_callback_list_edit
         )
         self.grid_columnconfigure(0, weight=1)
-        self.button.grid(
+        self.clock_label.grid(
             row=0,
             column=1,
             padx=20,
-            pady=20,
+            pady=(20, 10),
             sticky="e",
         )
-        self.button2.grid(
+        self.button.grid(
             row=1,
             column=1,
             padx=20,
             pady=20,
             sticky="e",
         )
+        self.button2.grid(
+            row=2,
+            column=1,
+            padx=20,
+            pady=20,
+            sticky="e",
+        )
+        self.update_clock()
 
     # 여기서 부터 app에 쓸 함수 정의
 
@@ -238,6 +256,11 @@ class App(customtkinter.CTk):
         # DB에 저장
         self.db.insert(TABLE_NAME, data)
         print("✅ DB 저장 완료!")
+
+    def update_clock(self):
+        current_time = time.strftime("%H:%M:%S") 
+        self.clock_label.configure(text=current_time)
+        self.after(1000, self.update_clock)  
 
 
 def main():
