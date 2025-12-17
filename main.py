@@ -9,7 +9,7 @@ DB_NAME = "goeha_words.db"
 TABLE_NAME = "words_table"
 
 class WordDict(TypedDict):
-    id: int | None  # SQLite는 id를 숫자로 줍니다
+    id: int | None  # SQLite는 id를 숫자로 준다능
     word: str
     meaning: str
     example: str | None
@@ -119,7 +119,7 @@ class App(customtkinter.CTk):
         self.title("Goeha Words")
         self.geometry("800x500")
         
-        # 1. 변수 초기화 (파이랜스 에러 방지용)
+        # 1. 변수 초기화 (파이랜스 에러 방지용) app 실행하면서 샤워를 싹 해주는. 건가
         self.db = SqliteManager()
         self._word_manager = WordManager()
         self._words: List[Any] = []
@@ -147,11 +147,12 @@ class App(customtkinter.CTk):
         # UI 배치
         self.grid_columnconfigure(0, weight=1)
         
-        # 버튼들
+        # 버튼
         self.button = customtkinter.CTkButton(self, text="단어추가", command=self.btn_callback_add_word)
-        self.button.grid(row=1, column=1, padx=20, pady=10, sticky="e")
+        self.button.place(relx=0.05, rely=0.85, anchor="sw")
         self.button2 = customtkinter.CTkButton(self, text="리스트 수정", command=self.btn_callback_list_edit)
-        self.button2.grid(row=2, column=1, padx=20, pady=10, sticky="e")
+        self.button2.place(relx=0.05, rely=0.75, anchor="sw")
+
 
         # 시계
         self.clock_label = customtkinter.CTkLabel(self, text="00:00:00", font=("Arial", 24, "bold"))
