@@ -228,7 +228,7 @@ class App(customtkinter.CTk):
                 
                 font=("Arial", 24, "bold"),
             )
-            shit = word["meaning"].strip().split(",")
+            shit = word["meaning"].split(",")
             print(shit)
             temp_label.grid(
                 row=index,
@@ -290,6 +290,92 @@ class App(customtkinter.CTk):
         )
         self.btn_sw_reset.grid(row=6, column=1, padx=20, pady=5, sticky="e")
         self.reset_stopwatch()
+        self.study_room()
+        
+    #여기는 나의 구역...엄청난 연구가 자행되고잇읍니다.
+    def study_room(self):
+        self.study_frame = customtkinter.CTkFrame(self, corner_radius=15)
+        self.study_frame.place(relx=0.5, rely=0.4, anchor="center", relwidth=0.6, relheight=0.6)
+        
+        self.progress = customtkinter.CTkProgressBar(self.study_frame)
+        self.progress.set(0)
+        self.progress.pack(pady=20, padx=20, fill="x")
+        
+        word_count = len(self._words)
+        self.word_label = customtkinter.CTkLabel(
+            self.study_frame, 
+            text=f"현재 단어 수: {word_count}개", 
+            font=("Arial", 30, "bold")
+        )
+        self.word_label.pack(expand=True) # True는 대문자로!
+        
+        self.interact = customtkinter.CTkEntry(self, placeholder_text="뜻 입력해")
+        self.interact.place(relx=0.5, rely=0.8, anchor="center", relwidth=0.4)
+        # 엔터키 누르면 채점 로직 실행
+        self.interact.bind("<Return>", lambda event: self.check_answer_logic())
+
+        self.btn_start_study = customtkinter.CTkButton(
+            self, text="학습 시작", command=self.start_study_ses
+        )
+        self.btn_start_study.place(relx=0.5, rely=0.9, anchor="center")
+
+    def start_study_ses(self):
+        import random
+        self.word_queue = self._words.copy() # 이름을 word_queue로 통일
+        random.shuffle(self.word_queue)
+        self.total_word_count = len(self.word_queue)
+        self.solved_count = 0
+        
+        # 버튼의 기능을 '확인'으로 변경
+        self.btn_start_study.configure(text="확인", command=self.check_answer_logic)
+        self.show_next_word()
+
+    def show_next_word(self):
+        if self.word_queue:
+            self.current_word = self.word_queue.pop(0)
+            self.word_label.configure(text=self.current_word["word"], text_color="black") # 글자색 초기화
+            self.interact.delete(0, 'end') 
+        else:
+            self.word_label.configure(text="🎉 학습 완료!", text_color="green")
+            self.btn_start_study.configure(text="학습 시작", command=self.start_study_ses)
+
+    def check_answer_logic(self):
+        user_input = self.interact.get().strip()
+        if not user_input: return
+
+        user_answers = [a.strip() for a in user_input.split(",") if a.strip()]
+        correct_meanings = [m.strip() for m in self.current_word["meaning"].split(",")]
+
+        is_correct = True
+        for answer in user_answers:
+            if answer not in correct_meanings:
+                is_correct = False
+                break
+        
+        if is_correct and user_answers:
+            # 정답일 때
+            self.solved_count += 1
+            progress_value = self.solved_count / self.total_word_count
+            self.progress.set(progress_value)
+            self.show_next_word()
+        else:
+            # 오답일 때
+            self.word_label.configure(
+                text=f"응 아니야\n정답: {self.current_word['meaning']}", 
+                text_color="red"
+            )
+            # 틀린 단어를 뭉치 중간에 다시 넣기
+            import random
+            # 남은 카드들 사이의 랜덤한 위치 계산
+            insert_pos = random.randint(0, len(self.word_queue)) if self.word_queue else 0
+            self.word_queue.insert(insert_pos, self.current_word)
+            
+            # 틀렸을 때는 바로 다음 단어로 넘어가지 않고, 
+            # 사용자가 정답을 확인한 후 다시 '확인' 버튼을 누르면 넘어가게 하면 좋겟누
+            self.interact.delete(0, 'end')
+   
+        
+        
 
     def toggle_stopwatch(self):
         if self.sw_running:
