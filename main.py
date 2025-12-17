@@ -15,7 +15,7 @@ class WordDict(TypedDict):
     word: str
     meaning: str
     example: str | None
-    hardness: int 
+    hardness: int
 
 
 # 바-이브-로-만든ㄻ
@@ -139,8 +139,11 @@ class WordManager:
             return
         self.sq_manager = SqliteManager()
 
+    def get_all_words(self):
+        return self.sq_manager.get_all(TABLE_NAME)
+
     def save_word(self, word: WordDict):
-        word.hardness = -1
+        word["hardness"] = -1
 
         self.sq_manager.insert(
             table=TABLE_NAME,
@@ -189,6 +192,7 @@ class WordModal(customtkinter.CTkToplevel):
 
 class App(customtkinter.CTk):
     _words = List[WordDict]
+    _word_manager = WordManager()
 
     def __init__(self):
         super().__init__()
@@ -203,18 +207,25 @@ class App(customtkinter.CTk):
             )
         """
         )
-        self._words = self.db.get_all(
-            table=TABLE_NAME,
-        )
+        self._word_manager = WordManager()
+        self._words = self._word_manager.get_all_words()
         print(self._words)
 
         self.grid_columnconfigure(0, weight=1)
-        for word in self._words:
+        for index, word in enumerate(self._words):
             temp_label = customtkinter.CTkLabel(
                 self,
-                text=f"{word.get("english")}",
+                text=f"{word["english"]}",
                 font=("Arial", 24, "bold"),
             )
+            temp_label.grid(
+                row=index,
+                column=0,
+                padx=20,
+                pady=(20, 10),
+                sticky="w",
+            )
+
         self.button = customtkinter.CTkButton(
             self, text="단어추가", command=self.btn_callback_add_word
         )
@@ -249,7 +260,7 @@ class App(customtkinter.CTk):
             sticky="e",
         )
         self.update_clock()
-        #self.separator.grid(row=3, column=1, padx=20, pady=(20, 5), sticky="e")
+        # self.separator.grid(row=3, column=1, padx=20, pady=(20, 5), sticky="e")
 
         # 스톱워치 ui
         self.sw_label = customtkinter.CTkLabel(
