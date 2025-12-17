@@ -162,9 +162,9 @@ class App(customtkinter.CTk):
         # 스톱워치
         self.sw_label = customtkinter.CTkLabel(self, text="00:00.0", font=("Arial", 30, "bold"), text_color="#FF9900")
         self.sw_label.grid(row=4, column=1, padx=20, pady=5, sticky="e")
-        self.btn_sw_start = customtkinter.CTkButton(self, text="Start", command=self.toggle_stopwatch, fg_color="green")
+        self.btn_sw_start = customtkinter.CTkButton(self, text="Start", command=self.toggle_stopwatch, fg_color="green", hover_color="#2C571A")
         self.btn_sw_start.grid(row=5, column=1, padx=20, pady=5, sticky="e")
-        self.btn_sw_reset = customtkinter.CTkButton(self, text="Reset", command=self.reset_stopwatch, fg_color="gray")
+        self.btn_sw_reset = customtkinter.CTkButton(self, text="Reset", command=self.reset_stopwatch, fg_color="gray", hover_color="#424242")
         self.btn_sw_reset.grid(row=6, column=1, padx=20, pady=5, sticky="e")
 
         # 학습실 실행
@@ -234,17 +234,17 @@ class App(customtkinter.CTk):
     def toggle_stopwatch(self):
         if self.sw_running:
             self.sw_running = False
-            self.btn_sw_start.configure(text="Start", fg_color="green")
+            self.btn_sw_start.configure(text="Start", fg_color="green", hover_color="#")
         else:
             self.sw_running = True
-            self.btn_sw_start.configure(text="Stop", fg_color="red")
+            self.btn_sw_start.configure(text="Stop", fg_color="red", hover_color="#AC0836")
             self.update_stopwatch()
 
     def reset_stopwatch(self):
         self.sw_running = False
         self.sw_counter = 0
         self.sw_label.configure(text="00:00.0")
-        self.btn_sw_start.configure(text="Start", fg_color="green")
+        self.btn_sw_start.configure(text="Start", fg_color="green", hover_color="#2C571A")
 
     def update_stopwatch(self):
         if self.sw_running:
