@@ -176,18 +176,25 @@ class WordModal(customtkinter.CTkToplevel):
         self.entry_kor = customtkinter.CTkEntry(self, placeholder_text="한글 뜻")
         self.entry_kor.pack(pady=10, padx=20)
 
+        self.entry_exa = customtkinter.CTkEntry(self, placeholder_text="예문")
+        self.entry_exa.pack(pady=10, padx=20)
+
         self.btn_save = customtkinter.CTkButton(self, text="저장", command=self.save)
         self.btn_save.pack(pady=10)
 
     def save(self):
-        english = self.entry_eng.get()
-        korean = self.entry_kor.get()
-
-        if english and korean:
+        word = self.entry_eng.get()
+        meaning= self.entry_kor.get()
+        example = self.entry_exa.get()
+        to_save: WordDict = {
+            "word": word,
+            "meaning": meaning,
+            "example": example
+        }
             # 부1모 창에서 넘겨준 함수 실행 (데이터 전달)
-            if self.on_confirm:
-                self.on_confirm({"english": english, "korean": korean})
-            self.destroy()  # 창 닫기
+        if self.on_confirm:
+            self.on_confirm(to_save)
+        self.destroy()  # 창 닫기
 
 
 class App(customtkinter.CTk):
@@ -202,8 +209,10 @@ class App(customtkinter.CTk):
             f"""
             CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                english TEXT,
-                korean TEXT
+                word TEXT,
+                meaning TEXT,
+                example TEXT,
+                hardness INTEGER
             )
         """
         )
@@ -215,9 +224,12 @@ class App(customtkinter.CTk):
         for index, word in enumerate(self._words):
             temp_label = customtkinter.CTkLabel(
                 self,
-                text=f"{word["english"]}",
+                text=f"{word["word"]}",
+                
                 font=("Arial", 24, "bold"),
             )
+            shit = word["meaning"].strip().split(",")
+            print(shit)
             temp_label.grid(
                 row=index,
                 column=0,
@@ -307,12 +319,6 @@ class App(customtkinter.CTk):
 
             self.after(100, self.update_stopwatch)
 
-    def save_word(
-        self,
-    ):
-        print("단어추가 시작")
-
-        pass
 
     def btn_callback_add_word(self):
         print("단어추가!")
@@ -329,6 +335,7 @@ class App(customtkinter.CTk):
 
         # DB에 저장
         self.db.insert(TABLE_NAME, data)
+        self._words = self._word_manager.get_all_words()
         print("✅ DB 저장 완료!")
 
     def update_clock(self):
