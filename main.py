@@ -76,7 +76,7 @@ class WordManager:
         return self.sq_manager.get_all(TABLE_NAME)
 
 class WordModal(customtkinter.CTkToplevel):
-    def __init__(self, parent: Any, title: str = "단어 추가", on_confirm: Callable | None = None, word_data: dict = None):
+    def __init__(self, parent: Any, title: str = "단어 추가", on_confirm: Callable | None = None, word_data: dict|None = None):
         super().__init__(parent)
         self.title(title)
         self.geometry("300x250")
