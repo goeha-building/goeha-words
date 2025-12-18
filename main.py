@@ -3,6 +3,7 @@ import customtkinter
 import sqlite3
 import random
 from typing import Callable, TypedDict, List, Any
+from PIL import Image, ImageTk
 
 # 변수
 DB_NAME = "goeha_words.db"
@@ -88,7 +89,7 @@ class WordModal(customtkinter.CTkToplevel):
 
         self.entry_eng = customtkinter.CTkEntry(self, placeholder_text="영어 단어")
         self.entry_eng.pack(pady=10, padx=20)
-        self.entry_kor = customtkinter.CTkEntry(self, placeholder_text="한글 뜻")
+        self.entry_kor = customtkinter.CTkEntry(self, placeholder_text="뜻")
         self.entry_kor.pack(pady=10, padx=20)
         self.entry_exa = customtkinter.CTkEntry(self, placeholder_text="예문")
         self.entry_exa.pack(pady=10, padx=20)
@@ -118,6 +119,17 @@ class App(customtkinter.CTk):
         super().__init__()
         self.title("Goeha Words")
         self.geometry("800x500")
+        
+        bg_image_data = Image.open("background3.jpg") 
+        self.bg_image = customtkinter.CTkImage(
+            light_image=bg_image_data,
+            dark_image=bg_image_data,
+            size=(800, 500)
+        )
+
+        # 2. 배경 이미쥐 라벨
+        self.bg_label = customtkinter.CTkLabel(self, text="", image=self.bg_image)
+        self.bg_label.place(relx=0, rely=0, relwidth=1, relheight=1)
         
         # 1. 변수 초기화 (파이랜스 에러 방지용) app 실행하면서 샤워를 싹 해주는. 건가
         self.db = SqliteManager()
@@ -167,7 +179,7 @@ class App(customtkinter.CTk):
         self.btn_sw_reset = customtkinter.CTkButton(self, text="Reset", command=self.reset_stopwatch, fg_color="gray", hover_color="#424242")
         self.btn_sw_reset.grid(row=6, column=1, padx=20, pady=5, sticky="e")
 
-        # 학습실 실행
+        # 학습실행
         self.study_room()
 
     def study_room(self):
