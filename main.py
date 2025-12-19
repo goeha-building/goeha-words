@@ -2,12 +2,21 @@ import time
 import customtkinter
 import sqlite3
 import random
+import threading
+import ast
+import os
+import json
 from typing import Callable, TypedDict, List, Any
 from PIL import Image
+
+# --- Google GenAI 관련 라이브러리 ---
+from google import genai
+from google.genai import types
 
 # 변수
 DB_NAME = "goeha_words.db"
 TABLE_NAME = "words_table"
+KEY_TABLE_NAME = "key_table"
 
 
 class WordDict(TypedDict):
@@ -16,6 +25,60 @@ class WordDict(TypedDict):
     meaning: str
     example: str | None
     hardness: int
+
+
+# --- AI 채점기 클래스 (에러 핸들링 추가됨) ---
+# --- AI 채점기 클래스 (JSON 모드 적용 + 안정성 강화) ---
+class GeminiGrader:
+    def __init__(self, api_key):
+        self.api_key = api_key
+        try:
+            self.client = genai.Client(api_key=self.api_key)
+            # "gemini-3-..." 같은 프리뷰 모델은 불안정함. 1.5 Flash가 국룰.
+            self.model = "gemini-3-flash-preview"
+        except Exception as e:
+            print(f"⚠️ GenAI 클라이언트 초기화 오류: {e}")
+            self.client = None
+
+    def check_meanings(self, word, user_meanings_list):
+        if not self.client:
+            return {"error": True, "msg": "API 키 오류 또는 초기화 실패"}
+
+        # 프롬프트: JSON으로 달라고 명확히 요구
+        input_text = f"""
+        Word: {word}
+        User's Answer: {str(user_meanings_list)}
+        
+        Check if the User's Answer allows the meaning of the Word.
+        Return JSON format: {{ "correct": ["matched_meaning"], "wrong": ["wrong_meaning"] }}
+        """
+
+        try:
+            # 설정: 응답 타입을 JSON으로 강제함 (이게 핵심!)
+            config = types.GenerateContentConfig(
+                response_mime_type="application/json",
+                system_instruction="You are a strict English teacher. Output ONLY JSON.",
+            )
+
+            response = self.client.models.generate_content(
+                model=self.model, contents=input_text, config=config
+            )
+
+            # JSON 모드를 썼으므로 별도 파싱 없이 바로 json.loads 가능
+            if response.text:
+                result_dict = json.loads(response.text)
+                return result_dict
+            else:
+                return {"error": True, "msg": "AI 응답이 비어있음"}
+
+        except Exception as e:
+            error_msg = str(e)
+            print(f"❌ AI 채점 중 오류 상세: {error_msg}")
+
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                return {"error": True, "msg": "⚠️ 사용량 초과! (잠시 후 다시 시도)"}
+
+            return {"error": True, "msg": "⚠️ AI 연결 오류 발생"}
 
 
 class SqliteManager:
@@ -138,10 +201,10 @@ class WordModal(customtkinter.CTkToplevel):
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Goeha Words")
+        self.title("Goeha Words (AI Edition)")
         self.geometry("800x500")
 
-        # 배경 이미지 (없어도 오류 안 나게 처리)
+        # 배경 이미지
         try:
             bg_image_data = Image.open("background3.jpg")
             self.bg_image = customtkinter.CTkImage(
@@ -157,7 +220,7 @@ class App(customtkinter.CTk):
         except Exception as e:
             print(f"⚠️ 아이콘 로드 실패: {e}")
 
-        # 변수쨩
+        # 변수
         self.db = SqliteManager()
         self._word_manager = WordManager()
         self._words = []
@@ -169,6 +232,7 @@ class App(customtkinter.CTk):
         self.total_word_count = 0
         self.solved_count = 0
         self.wrong_count = 0
+        self.gemini_grader = None
 
         # DB 테이블 생성
         self.db.query(
@@ -182,8 +246,18 @@ class App(customtkinter.CTk):
             )
         """
         )
+        self.db.query(
+            f"""
+            CREATE TABLE IF NOT EXISTS {KEY_TABLE_NAME} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                api_key TEXT
+            )
+        """
+        )
 
-        # UI 배치 (그리드 설정)
+        self.init_ai_system()
+
+        # UI 배치
         self.grid_columnconfigure(0, weight=1)
 
         # 1. 단어 리스트
@@ -192,7 +266,7 @@ class App(customtkinter.CTk):
         )
         self.word_list_frame.place(relx=0.05, rely=0.04, anchor="nw")
 
-        # 2. 정보란/상작버튼/단어버튼
+        # 2. 정보란
         self.info_label = customtkinter.CTkLabel(
             self, text="단어를 선택하십시오", font=("Arial", 16, "bold")
         )
@@ -229,7 +303,7 @@ class App(customtkinter.CTk):
         self.clock_label.grid(row=0, column=1, padx=20, pady=20, sticky="e")
         self.update_clock()
 
-        # 4. 우측 하단 스톱워치 (살려냈습니다!)
+        # 4. 우측 하단 스톱워치
         self.sw_label = customtkinter.CTkLabel(
             self, text="00:00.0", font=("Arial", 30, "bold"), text_color="#FF9900"
         )
@@ -255,6 +329,22 @@ class App(customtkinter.CTk):
         self.study_room()
         self.refresh_word_list()
 
+    def init_ai_system(self):
+        key_data = self.db.get_all(table=KEY_TABLE_NAME)
+        api_key = None
+
+        if not key_data:
+            print("aistudio api key를 입력하십시오.")
+            input_key = input()
+
+            self.db.insert(table=KEY_TABLE_NAME, data={"api_key": input_key})
+            api_key = input_key
+        else:
+            api_key = key_data[0]["api_key"]
+
+        print(f"🔑 AI 초기화 시도... (Key: {api_key[:10]}...)")
+        self.gemini_grader = GeminiGrader(api_key)
+
     # --- 기능 함수들 ---
 
     def refresh_word_list(self):
@@ -272,7 +362,10 @@ class App(customtkinter.CTk):
             )
             btn.pack(fill="x", padx=5, pady=2)
         if hasattr(self, "word_label"):
-            self.word_label.configure(text=f"현재 단어 수: {len(self._words)}개")
+            self.word_label.configure(
+                text=f"현재 단어 수: {len(self._words)}개",
+                text_color=("black", "white"),
+            )
 
     def show_word_detail(self, word_data):
         self.current_selected_word = word_data
@@ -313,7 +406,7 @@ class App(customtkinter.CTk):
         self.refresh_word_list()
         self.info_label.configure(text="수정 완료!")
 
-    # --- 스톱워치 로직 (살려냈습니다!) ---
+    # --- 스톱워치 ---
     def toggle_stopwatch(self):
         if self.sw_running:
             self.sw_running = False
@@ -338,7 +431,7 @@ class App(customtkinter.CTk):
             self.sw_label.configure(text=f"{minutes:02d}:{seconds:02d}.{deciseconds}")
             self.after(100, self.update_stopwatch)
 
-    # --- 학습실 로직 ---
+    # --- 학습실 ---
     def study_room(self):
         self.study_frame = customtkinter.CTkFrame(self, corner_radius=15)
         self.study_frame.place(
@@ -369,7 +462,9 @@ class App(customtkinter.CTk):
 
     def start_study_ses(self):
         if not self._words:
-            self.word_label.configure(text="단어를 먼저 추가하세요!")
+            self.word_label.configure(
+                text="단어를 먼저 추가하세요!", text_color=("black", "white")
+            )
             return
         self.interact.place(relx=0.5, rely=0.8, anchor="center", relwidth=0.4)
         self.word_queue = self._words.copy()
@@ -377,7 +472,9 @@ class App(customtkinter.CTk):
         self.total_word_count = len(self.word_queue)
         self.solved_count = 0
         self.wrong_count = 0
-        self.btn_start_study.configure(text="확인", command=self.check_answer_logic)
+        self.btn_start_study.configure(
+            text="제출 (Enter)", command=self.check_answer_logic
+        )
         self.show_next_word()
 
     def show_next_word(self):
@@ -387,6 +484,7 @@ class App(customtkinter.CTk):
                 text=self.current_word["word"], text_color=("black", "white")
             )
             self.interact.delete(0, "end")
+            self.interact.configure(state="normal")
             self.interact.focus()
         else:
             self.interact.place_forget()
@@ -399,15 +497,71 @@ class App(customtkinter.CTk):
     def check_answer_logic(self):
         if not self.current_word:
             return
+
         user_input = self.interact.get().strip()
         if not user_input:
             return
 
-        correct_meanings = [m.strip() for m in self.current_word["meaning"].split(",")]
+        # UI를 '채점 중' 상태로 변경
+        self.word_label.configure(text="🤖 AI가 생각하는 중...", text_color="blue")
+        self.interact.configure(state="disabled")
 
-        if user_input in correct_meanings:
+        # 스레드에서 AI 실행
+        threading.Thread(target=self.run_ai_grading, args=(user_input,)).start()
+
+    def run_ai_grading(self, user_input):
+        # 1차적으로 정확한 텍스트 매칭 시도
+        correct_meanings = [m.strip() for m in self.current_word["meaning"].split(",")]
+        user_input_list = [m.strip() for m in user_input.split(",")]
+
+        is_exact_match = False
+        for u in user_input_list:
+            if u in correct_meanings:
+                is_exact_match = True
+                break
+
+        if is_exact_match:
+            self.after(
+                0, lambda: self.handle_result(True, user_input, "정확한 정답입니다!")
+            )
+            return
+
+        # 2차적으로 AI에게 물어보기
+        if self.gemini_grader:
+            result = self.gemini_grader.check_meanings(
+                self.current_word["word"], user_input_list
+            )
+
+            # AI 에러가 발생한 경우 (429 등)
+            if result and "error" in result and result["error"]:
+                self.after(0, lambda: self.handle_ai_error(result["msg"]))
+                return
+
+            # 정상 응답 처리
+            if result and result.get("correct"):
+                msg = f"AI 인정 정답: {', '.join(result['correct'])}"
+                self.after(0, lambda: self.handle_result(True, user_input, msg))
+            else:
+                self.after(0, lambda: self.handle_result(False, user_input))
+        else:
+            self.after(0, lambda: self.handle_result(False, user_input))
+
+    def handle_ai_error(self, error_msg):
+        # 에러 발생 시 UI 처리
+        self.word_label.configure(text=error_msg, text_color="#FF8C00")  # 주황색
+        self.interact.configure(
+            state="normal"
+        )  # 입력창 다시 활성화 (사용자가 다시 시도하거나 기다릴 수 있게)
+        # 큐에 다시 넣지 않고, 현재 화면에서 머무름
+
+    def handle_result(self, is_correct, user_input, msg=""):
+        self.interact.configure(state="normal")
+
+        if is_correct:
             self.solved_count += 1
             self.progress.set(self.solved_count / self.total_word_count)
+            if msg:
+                print(msg)
             self.show_next_word()
         else:
             self.wrong_count += 1
@@ -415,8 +569,9 @@ class App(customtkinter.CTk):
                 text=f"틀렸어요!\n정답: {self.current_word['meaning']}",
                 text_color="red",
             )
-            self.word_queue.append(self.current_word)  # 틀리면 다시 큐에 넣음
+            self.word_queue.append(self.current_word)
             self.interact.delete(0, "end")
+            self.interact.focus()
 
     def update_clock(self):
         self.clock_label.configure(text=time.strftime("%H:%M:%S"))
