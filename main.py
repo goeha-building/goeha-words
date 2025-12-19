@@ -3,7 +3,7 @@ import customtkinter
 import sqlite3
 import random
 from typing import Callable, TypedDict, List, Any
-from PIL import Image, ImageTk
+from PIL import Image
 
 # 변수
 DB_NAME = "goeha_words.db"
@@ -151,6 +151,11 @@ class App(customtkinter.CTk):
             self.bg_label.place(relx=0, rely=0, relwidth=1, relheight=1)
         except:
             print("⚠️ 배경 이미지 로드 실패")
+
+        try:
+            self.iconbitmap("icon.ico")
+        except Exception as e:
+            print(f"⚠️ 아이콘 로드 실패: {e}")
 
         # 변수쨩
         self.db = SqliteManager()
