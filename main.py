@@ -3,8 +3,6 @@ import customtkinter
 import sqlite3
 import random
 import threading
-import ast
-import os
 import json
 from typing import Callable, TypedDict, List, Any
 from PIL import Image
@@ -27,15 +25,14 @@ class WordDict(TypedDict):
     hardness: int
 
 
-# --- AI 채점기 클래스 (에러 핸들링 추가됨) ---
 # --- AI 채점기 클래스 (JSON 모드 적용 + 안정성 강화) ---
 class GeminiGrader:
     def __init__(self, api_key):
         self.api_key = api_key
+        self.client = None
         try:
             self.client = genai.Client(api_key=self.api_key)
-            # "gemini-3-..." 같은 프리뷰 모델은 불안정함. 1.5 Flash가 국룰.
-            self.model = "gemini-3-flash-preview"
+            self.model = "gemini-flash-lite-latest"
         except Exception as e:
             print(f"⚠️ GenAI 클라이언트 초기화 오류: {e}")
             self.client = None
@@ -49,15 +46,16 @@ class GeminiGrader:
         Word: {word}
         User's Answer: {str(user_meanings_list)}
         
-        Check if the User's Answer allows the meaning of the Word.
-        Return JSON format: {{ "correct": ["matched_meaning"], "wrong": ["wrong_meaning"] }}
+        Check if the User's Answer allows the meaning of the Word(STRICT!).
+
+        Return JSON format: {{ "correct": ["matched_meaning"], "wrong": ["wrong_meaning"], "meanings": ["korean_meaning", "korean_meaning"] }}
         """
 
         try:
             # 설정: 응답 타입을 JSON으로 강제함 (이게 핵심!)
             config = types.GenerateContentConfig(
                 response_mime_type="application/json",
-                system_instruction="You are a strict English teacher. Output ONLY JSON.",
+                system_instruction="You are a strict Language teacher. Output ONLY JSON.",
             )
 
             response = self.client.models.generate_content(
@@ -511,6 +509,8 @@ class App(customtkinter.CTk):
 
     def run_ai_grading(self, user_input):
         # 1차적으로 정확한 텍스트 매칭 시도
+        if self.current_word is None:
+            return
         correct_meanings = [m.strip() for m in self.current_word["meaning"].split(",")]
         user_input_list = [m.strip() for m in user_input.split(",")]
 
@@ -542,7 +542,14 @@ class App(customtkinter.CTk):
                 msg = f"AI 인정 정답: {', '.join(result['correct'])}"
                 self.after(0, lambda: self.handle_result(True, user_input, msg))
             else:
-                self.after(0, lambda: self.handle_result(False, user_input))
+                # 오답일 경우, AI가 알려준 meanings를 함께 전달
+                ai_meanings = result.get("meanings", []) if result else []
+                self.after(
+                    0,
+                    lambda: self.handle_result(
+                        False, user_input, ai_meanings=ai_meanings
+                    ),
+                )
         else:
             self.after(0, lambda: self.handle_result(False, user_input))
 
@@ -554,9 +561,10 @@ class App(customtkinter.CTk):
         )  # 입력창 다시 활성화 (사용자가 다시 시도하거나 기다릴 수 있게)
         # 큐에 다시 넣지 않고, 현재 화면에서 머무름
 
-    def handle_result(self, is_correct, user_input, msg=""):
+    def handle_result(self, is_correct, user_input, msg="", ai_meanings=None):
         self.interact.configure(state="normal")
-
+        if self.current_word is None:
+            return
         if is_correct:
             self.solved_count += 1
             self.progress.set(self.solved_count / self.total_word_count)
@@ -565,8 +573,15 @@ class App(customtkinter.CTk):
             self.show_next_word()
         else:
             self.wrong_count += 1
+
+            # AI가 알려준 뜻이 있으면 그것을 사용, 없으면(또는 리스트가 비었으면) DB값 사용
+            if ai_meanings and len(ai_meanings) > 0:
+                answer_display = ", ".join(ai_meanings)
+            else:
+                answer_display = self.current_word["meaning"]
+
             self.word_label.configure(
-                text=f"틀렸어요!\n정답: {self.current_word['meaning']}",
+                text=f"틀렸어요!\n정답: {answer_display}",
                 text_color="red",
             )
             self.word_queue.append(self.current_word)
