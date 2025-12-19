@@ -7,7 +7,8 @@ import json
 from typing import Callable, TypedDict, List, Any
 from PIL import Image
 
-# --- Google GenAI 관련 라이브러리 ---
+
+# 재미이 임포트
 from google import genai
 from google.genai import types
 
@@ -25,7 +26,6 @@ class WordDict(TypedDict):
     hardness: int
 
 
-# --- AI 채점기 클래스 (JSON 모드 적용 + 안정성 강화) ---
 class GeminiGrader:
     def __init__(self, api_key):
         self.api_key = api_key
