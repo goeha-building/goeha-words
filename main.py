@@ -4,7 +4,7 @@ import sqlite3
 import random
 import threading
 import json
-from typing import Callable, TypedDict, List, Any
+from typing import Callable, Tuple, TypedDict, List, Any
 from PIL import Image
 
 
@@ -142,6 +142,190 @@ class WordManager:
 
     def get_all_words(self) -> List[Any]:
         return self.sq_manager.get_all(TABLE_NAME)
+
+
+# WordDict 타입 예시 (상황에 맞게 수정)
+# WordDict = Dict[str, str]
+
+
+class WritingModal(customtkinter.CTkToplevel):
+    def __init__(self, parent: Any, title: str = "작문시험"):
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("500x600")  # 결과를 보여줘야 하니 좀 더 크게 잡음
+        self.grab_set()
+
+        key_data = SqliteManager().get_all(table=KEY_TABLE_NAME)
+        api_key = None
+
+        if not key_data:
+            print("aistudio api key를 입력하십시오.")
+            input_key = input()
+
+            SqliteManager().insert(table=KEY_TABLE_NAME, data={"api_key": input_key})
+            api_key = input_key
+        else:
+            api_key = key_data[0]["api_key"]
+        # Gemini 클라이언트 초기화
+        self.client = genai.Client(api_key=api_key)
+        self.model_id = (
+            "gemini-3-flash-preview"  # 실제 존재하는 모델명으로 수정 (3는 아직...)
+        )
+
+        # 스크롤 가능한 프레임 생성 (단어가 많을 경우 대비)
+        self.scroll_frame = customtkinter.CTkScrollableFrame(
+            self, width=450, height=500
+        )
+        self.scroll_frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+        # 단어 목록 가져오기 (WordManager가 있다고 가정)
+        # words = WordManager().get_all_words()
+        # 테스트용 임시 데이터
+        words = WordManager().get_all_words()
+
+        for word in words:
+            self.render_word_test(word=word)
+
+        self.btn_exit = customtkinter.CTkButton(
+            self, text="닫기", command=self.exit_modal
+        )
+        self.btn_exit.pack(pady=10)
+
+    def render_word_test(self, word: WordDict):
+        # 단어 라벨
+        word_label = customtkinter.CTkLabel(
+            self.scroll_frame, text=f"단어: {word['word']}", font=("Arial", 16, "bold")
+        )
+        word_label.pack(pady=(10, 5), padx=20, anchor="w")
+
+        # 입력창
+        entry_user_writing = customtkinter.CTkEntry(
+            self.scroll_frame,
+            placeholder_text="이 단어를 사용하여 작문하세요.",
+            width=400,
+        )
+        entry_user_writing.pack(pady=5, padx=20)
+
+        # 결과 표시용 텍스트박스 (처음엔 숨김 처리하거나 작게)
+        result_label = customtkinter.CTkTextbox(
+            self.scroll_frame, width=400, height=100, activate_scrollbars=False
+        )
+        result_label.insert("0.0", "결과가 여기에 표시됩니다.")
+        result_label.pack(pady=5, padx=20)
+        result_label.configure(state="disabled")
+
+        # 제출 버튼 (람다를 사용하여 현재 입력창의 값을 전달)
+        btn_submit = customtkinter.CTkButton(
+            self.scroll_frame,
+            text="검사하기",
+            command=lambda: self.start_analysis(
+                word["word"], entry_user_writing, result_label
+            ),
+        )
+        btn_submit.pack(pady=(5, 20), padx=20)
+
+    def start_analysis(self, word, entry, result_widget):
+        user_text = entry.get()
+        if not user_text.strip():
+            return
+
+        # UI가 멈추지 않게 별도 쓰레드에서 Gemini 호출
+        result_widget.configure(state="normal")
+        result_widget.delete("0.0", "end")
+        result_widget.insert("0.0", "분석 중...")
+        result_widget.configure(state="disabled")
+
+        thread = threading.Thread(
+            target=self.run_gemini, args=(word, user_text, result_widget)
+        )
+        thread.start()
+
+    def run_gemini(self, word, writing, result_widget):
+        try:
+            # 네가 만든 설정 그대로 적용
+            config = types.GenerateContentConfig(
+                # thinking_config=types.ThinkingConfig(thinking_level="HIGH"), # 필요시 활성화
+                response_mime_type="application/json",
+                response_schema=types.Schema(
+                    type=types.Type.OBJECT,
+                    required=["original", "corrected", "score", "feedback"],
+                    properties={
+                        "original": genai.types.Schema(
+                            type=genai.types.Type.STRING,
+                            description="The original text provided by the user.",
+                        ),
+                        "corrected": genai.types.Schema(
+                            type=genai.types.Type.STRING,
+                            description="The grammatically and contextually corrected version of the text.",
+                        ),
+                        "score": genai.types.Schema(
+                            type=genai.types.Type.INTEGER,
+                            description="A writing score from 0 to 100.",
+                        ),
+                        "feedback": genai.types.Schema(
+                            type=genai.types.Type.STRING,
+                            description="Short explanation of the corrections and word usage.",
+                        ),
+                    },
+                ),
+                system_instruction="""## Role
+You are a precise writing evaluator. Your task is to analyze the user's writing based on a provided target word and provide a concise critique.
+
+## Input Specification
+You will receive input in the following JSON format:
+{
+  \"word\": \"string\",
+  \"user_writing\": \"string\"
+}
+
+## Task Procedures
+1. **Target Word Usage**: Verify if the \"word\" is used correctly in terms of part of speech, meaning, and context.
+2. **Linguistic Analysis**: 
+   - Check for grammatical errors (tense, agreement, articles, etc.).
+   - Evaluate spelling and punctuation.
+   - Analyze semantic clarity and natural flow (idiomatic usage).
+3. **Correction**: Provide a corrected version of the sentence that sounds natural to a native speaker.
+4. **Scoring**: Assign a score from 0 to 100 based on accuracy, complexity, and naturalness.
+5. **Use Korean to feedback**
+
+## Output Format
+Return ONLY a JSON object with the following keys:
+{
+  \"original\": \"The user's input string\",
+  \"corrected\": \"The corrected version of the writing\",
+  \"score\": number,
+  \"feedback\": \"A concise explanation of errors and usage of the word\"
+}""",
+            )
+
+            prompt = f"Target word: {word}\nUser writing: {writing}"
+
+            # 스트리밍 대신 일반 호출로 처리 (JSON 전체를 한 번에 받기 위함)
+            response = self.client.models.generate_content(
+                model=self.model_id, contents=prompt, config=config
+            )
+
+            # 결과 파싱 및 UI 업데이트
+            res_data: Any = (
+                response.parsed
+            )  # Structured Output 덕분에 바로 객체로 들어옴
+
+            output_text = f"{res_data}"
+
+            self.update_result_ui(result_widget, output_text)
+
+        except Exception as e:
+            self.update_result_ui(result_widget, f"오류 발생: {str(e)}")
+
+    def update_result_ui(self, widget, text):
+        # 메인 쓰레드에서 UI 업데이트
+        widget.configure(state="normal")
+        widget.delete("0.0", "end")
+        widget.insert("0.0", text)
+        widget.configure(state="disabled")
+
+    def exit_modal(self):
+        self.destroy()
 
 
 class WordModal(customtkinter.CTkToplevel):
@@ -323,6 +507,15 @@ class App(customtkinter.CTk):
         )
         self.btn_sw_reset.grid(row=6, column=1, padx=20, pady=5, sticky="e")
 
+        self.btn_writing_test = customtkinter.CTkButton(
+            self,
+            text="btn_writing_test",
+            command=self.open_writing_test,
+            fg_color="gray",
+            hover_color="#424242",
+        )
+        self.btn_writing_test.grid(row=7, column=1, padx=20, pady=5, sticky="e")
+
         # 5. 중앙 학습실
         self.study_room()
         self.refresh_word_list()
@@ -364,6 +557,9 @@ class App(customtkinter.CTk):
                 text=f"현재 단어 수: {len(self._words)}개",
                 text_color=("black", "white"),
             )
+
+    def open_writing_test(self):
+        WritingModal(self)
 
     def show_word_detail(self, word_data):
         self.current_selected_word = word_data
