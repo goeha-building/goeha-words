@@ -309,7 +309,6 @@ Return ONLY a JSON object with the following keys:
             res_data: Any = (
                 response.parsed
             )  # Structured Output 덕분에 바로 객체로 들어옴
-
             output_text = f"{res_data}"
 
             self.update_result_ui(result_widget, output_text)
