@@ -2,9 +2,27 @@
 
 ## START!!! GOEHA-WORDS
 
+- `win` + `r` 키를 누르고 **powershell** 누른 후 `enter`
+- 아래 코드 블록을 복사해서 붙여넣고 `enter`
+
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/goeha-building/goeha-words/refs/heads/master/setup.ps1 | iex"
 ```
+
+## 기능 설명
+
+### api key 입력
+
+![alt](/attatched/set_api_key.png)
+
+- [google ai studio](https://aistudio.google.com/app/api-keys)에 접속하여 api 키를 얻습니다.
+- 복사한 api 키를 입력합니다.
+
+### 단어 추가
+
+![alt](/attatched/add_word_button.png)
+
+- 단어 추가 버튼을 누릅니다.
 
 ## TODO
 
