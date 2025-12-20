@@ -1,6 +1,6 @@
 @echo off
+chcp 65001 >nul
 setlocal
-
 :: 1. uv 설치 여부 확인
 where uv >nul 2>&1
 if %errorlevel% neq 0 (
