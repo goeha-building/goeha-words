@@ -1,11 +1,17 @@
 # GOEHA WORDS
 
+## START!!! GOEHA-WORDS
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/goeha-building/goeha-words/refs/heads/master/setup.ps1 | iex"
+```
+
 ## TODO
 
 - 데이터베이스 구조 결정하기
 - 시작화면에 API 키 넣기 추가
   - sqlite에 api 키 저장하는 로직 추가
-  - 
+  -
 
 ## 앱 기능 및 구조
 
