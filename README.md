@@ -1,6 +1,6 @@
-# 📘 GOEHA WORDS (AI 작문 코치 ALL-IN-ONE 영단어장)
+# 📘 GOEHA WORDS
 
-**GOEHA WORDS**는 Google Gemini API를 활용하여 단순 암기를 넘어 **실전 작문 실력 및 어법 활용 능력**을 길러주는 AI 기반 영단어 학습 프로그램입니다!
+**GOEHA WORDS**는 Google Gemini API를 활용하여 단순 암기를 넘어 **실전 작문 실력 및 어법 활용 능력**을 길러주는 AI 기반 영단어 학습 ALL-IN-ONE 프로그램입니다!
 학습 기능을 통해 단어를 반복 학습하고, 그 단어를 사용해서 직접 문장을 만들면 AI가 1:1 과외 선생님처럼 **즉시 채점하고 피드백을 제공합니다.**
 
 ## START!!! GOEHA WORDS

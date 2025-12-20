@@ -485,16 +485,51 @@ class App(customtkinter.CTk):
 
     def toggle_focus_guard(self):
         self.focus_guard_on = self.switch_alert.get()
-        if self.focus_guard_on: self.after(300000, self.alert_pop)
+        if self.focus_guard_on: self.after(30000, self.alert_pop)
 
     def alert_pop(self):
         if self.focus_guard_on:
-            win = customtkinter.CTkToplevel(self)
-            win.attributes("-topmost", True)
-            win.geometry("300x150")
-            customtkinter.CTkLabel(win, text="🔥 집중하세요! 딴짓 금지!").pack(pady=20)
-            customtkinter.CTkButton(win, text="네!", command=win.destroy).pack()
-            self.after(300000, self.alert_pop)
+            if self.focus_guard_on: self.after(30000, self.alert_pop)
+        all_words = self._word_manager.get_all_words()
+        
+        if not all_words:
+            return
+        quiz_word = random.choice(all_words)
+        quiz_type = random.randint(0,1)
+        
+        if quiz_type==0:
+            question_text=f"{quiz_word['word']}-이 단어의 뜻은?"
+            correct_answer= quiz_word['meaning']
+        else: 
+            question_text=f"{quiz_word['meaning']}-이 뜻을 가진 영단어는?"
+            correct_answer= quiz_word['word']
+        win = customtkinter.CTkToplevel(self)
+        win.attributes("-topmost", True)
+        win.geometry("400x250")
+        customtkinter.CTkLabel(win, text=question_text, font=("Arial", 18, "bold")).pack(pady=20)
+        answer_entry = customtkinter.CTkEntry(win, placeholder_text="답을 입력하세요", width=250)
+        answer_entry.pack(pady=10)
+        def check_quiz():
+            user_input = answer_entry.get().strip() # 입력한 답안 분리
+            answers = [a.strip() for a in correct_answer.split(",")]
+            
+            if user_input in answers:
+                # 정답 
+                result_label.configure(text="✅ 정답입니다! \n{correct_answer}\n 참 잘했어요~", text_color="green")
+                # 3초 뒤에 창이 자동으로 닫히게
+                win.after(2000, win.destroy)
+            else:
+                result_label.configure(text=f"❌오답! 좀 분발하세요~ 정답은: {correct_answer}", text_color="red")
+
+        # 확인
+        quiz_btn = customtkinter.CTkButton(win, text="정답 제출", command=check_quiz)
+        quiz_btn.pack(pady=10)
+
+        # 결과 라벨
+        result_label = customtkinter.CTkLabel(win, text="")
+        result_label.pack(pady=10)
+        
+        self.after(30000, self.alert_pop)
 
 if __name__ == "__main__":
     app = App()
