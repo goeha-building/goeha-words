@@ -90,21 +90,6 @@ class WritingModal(customtkinter.CTkToplevel):
 
         key_data = SqliteManager().get_all(table=KEY_TABLE_NAME)
         api_key = key_data[0]["api_key"] if key_data else ""
-        api_key = None
-
-        if not key_data:
-            print("-" * 50)
-            print("aistudio api key를 입력하십시오.")
-            print("키가 없다면 아래 링크에서 발급 및 확인이 가능합니다:")
-            print("👉 https://aistudio.google.com/app/api-keys")
-            print("-" * 50)
-            input_key = input("API KEY: ").strip()
-
-            SqliteManager().insert(table=KEY_TABLE_NAME, data={"api_key": input_key})
-            api_key = input_key
-        else:
-            api_key = key_data[0]["api_key"]
-        # Gemini 클라이언트 초기화
         self.client = genai.Client(api_key=api_key)
         self.model_id = "gemini-2.0-flash"
 
@@ -204,10 +189,29 @@ class App(customtkinter.CTk):
         # DB 초기화
         self.db.query(f"CREATE TABLE IF NOT EXISTS {TABLE_NAME} (id INTEGER PRIMARY KEY AUTOINCREMENT, word TEXT, meaning TEXT, example TEXT, hardness INTEGER DEFAULT 0)")
         self.db.query(f"CREATE TABLE IF NOT EXISTS {KEY_TABLE_NAME} (id INTEGER PRIMARY KEY AUTOINCREMENT, api_key TEXT)")
-
+        self.init_ai_system()
         # UI 배치
         self.setup_ui()
         self.refresh_word_list()
+
+    def init_ai_system(self):
+        key_data = self.db.get_all(table=KEY_TABLE_NAME)
+        api_key = None
+
+        if not key_data:
+            print("-" * 50)
+            print("aistudio api key를 입력하십시오.")
+            print("키가 없다면 아래 링크에서 발급 및 확인이 가능합니다:")
+            print("👉 https://aistudio.google.com/app/api-keys")
+            print("-" * 50)
+            input_key = input("API KEY: ").strip()
+            self.db.insert(table=KEY_TABLE_NAME, data={"api_key": input_key})
+            api_key = input_key
+        else:
+            api_key = key_data[0]["api_key"]
+
+        print(f"🔑 AI 초기화 시도... (Key: {api_key[:10]}...)")
+
 
     def setup_ui(self):
         # 배경 이미지 (생략 가능)
@@ -248,133 +252,6 @@ class App(customtkinter.CTk):
         # 알람 스위치
         self.switch_alert = customtkinter.CTkSwitch(self, text="깜짝 알림", command=self.toggle_focus_guard)
         self.switch_alert.place(relx=0.98, rely=0.35, anchor="ne")
-        self.btn_writing_test = customtkinter.CTkButton(
-            self,
-            text="btn_writing_test",
-            command=self.open_writing_test,
-            fg_color="gray",
-            hover_color="#424242",
-        )
-        self.btn_writing_test.grid(row=7, column=1, padx=20, pady=5, sticky="e")
-
-        # 5. 중앙 학습실
-        self.study_room()
-        self.refresh_word_list()
-
-    def init_ai_system(self):
-        key_data = self.db.get_all(table=KEY_TABLE_NAME)
-        api_key = None
-
-        if not key_data:
-            print("-" * 50)
-            print("aistudio api key를 입력하십시오.")
-            print("키가 없다면 아래 링크에서 발급 및 확인이 가능합니다:")
-            print("👉 https://aistudio.google.com/app/api-keys")
-            print("-" * 50)
-            input_key = input("API KEY: ").strip()
-            self.db.insert(table=KEY_TABLE_NAME, data={"api_key": input_key})
-            api_key = input_key
-        else:
-            api_key = key_data[0]["api_key"]
-
-        print(f"🔑 AI 초기화 시도... (Key: {api_key[:10]}...)")
-        # self.gemini_grader = GeminiGrader(api_key)
-
-    # --- 기능 함수들 ---
-
-    # def refresh_word_list(self):
-    #     for widget in self.word_list_frame.winfo_children():
-    #         widget.destroy()
-    #     self._words = self._word_manager.get_all_words()
-    #     for word_data in self._words:
-    #         btn = customtkinter.CTkButton(
-    #             self.word_list_frame,
-    #             text=word_data["word"],
-    #             fg_color="transparent",
-    #             text_color=("black", "white"),
-    #             anchor="w",
-    #             command=lambda w=word_data: self.show_word_detail(w),
-    #         )
-    #         btn.pack(fill="x", padx=5, pady=2)
-    #     if hasattr(self, "word_label"):
-    #         self.word_label.configure(
-    #             text=f"현재 단어 수: {len(self._words)}개",
-    #             text_color=("black", "white"),
-    #         )
-
-    def open_writing_test(self):
-        WritingModal(self)
-
-    # def show_word_detail(self, word_data):
-    #     self.current_selected_word = word_data
-    #     detail_text = f"단어: {word_data['word']}\n뜻: {word_data['meaning']}"
-    #     if word_data.get("example"):
-    #         detail_text += f"\n예문: {word_data['example']}"
-    #     self.info_label.configure(text=detail_text)
-    #     self.delete_btn.configure(command=lambda: self.delete_word(word_data["id"]))
-
-    # def delete_word(self, word_id):
-    #     self.db.query(f"DELETE FROM {TABLE_NAME} WHERE id = ?", (word_id,))
-    #     self.refresh_word_list()
-    #     self.info_label.configure(text="삭제되었습니다.")
-
-    # def btn_callback_add_word(self):
-    #     WordModal(self, title="단어 추가", on_confirm=self.add_word_to_db)
-
-    def add_word_to_db(self, data):
-        self.db.insert(TABLE_NAME, data)
-        self.refresh_word_list()
-
-    # def btn_callback_modify_word(self):
-    #     if self.current_selected_word:
-    #         WordModal(
-    #             self,
-    #             title="단어 수정",
-    #             on_confirm=self.update_word_in_db,
-    #             word_data=self.current_selected_word,
-    #         )
-    #     else:
-    #         self.info_label.configure(text="수정할 단어를 선택하세요!")
-
-    def update_word_in_db(self, data):
-        word_id = data.pop("id")
-        columns = ", ".join([f"{k}=?" for k in data.keys()])
-        sql = f"UPDATE {TABLE_NAME} SET {columns} WHERE id=?"
-        self.db.query(sql, tuple(data.values()) + (word_id,))
-        self.refresh_word_list()
-        self.info_label.configure(text="수정 완료!")
-
-    # --- 스톱워치 ---
-    # def toggle_stopwatch(self):
-    #     if self.sw_running:
-    #         self.sw_running = False
-    #         self.btn_sw_start.configure(text="Start", fg_color="green")
-    #     else:
-    #         self.sw_running = True
-    #         self.btn_sw_start.configure(text="Stop", fg_color="red")
-    #         self.update_stopwatch()
-
-    # def reset_stopwatch(self):
-    #     self.sw_running = False
-    #     self.sw_counter = 0
-    #     self.sw_label.configure(text="00:00.0")
-    #     self.btn_sw_start.configure(text="Start", fg_color="green")
-
-    def update_stopwatch(self):
-        if self.sw_running:
-            self.sw_counter += 1
-            total_seconds = self.sw_counter // 10
-            deciseconds = self.sw_counter % 10
-            minutes, seconds = divmod(total_seconds, 60)
-            self.sw_label.configure(text=f"{minutes:02d}:{seconds:02d}.{deciseconds}")
-            self.after(100, self.update_stopwatch)
-
-    # --- 학습실 ---
-    def study_room(self):
-        self.study_frame = customtkinter.CTkFrame(self, corner_radius=15)
-        self.study_frame.place(
-            relx=0.5, rely=0.4, anchor="center", relwidth=0.4, relheight=0.5
-        )
 
         # 중앙 학습 영역
         self.study_frame = customtkinter.CTkFrame(self, corner_radius=15, width=600, height=500)
