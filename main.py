@@ -164,7 +164,7 @@ class WritingModal(customtkinter.CTkToplevel):
             print("키가 없다면 아래 링크에서 발급 및 확인이 가능합니다:")
             print("👉 https://aistudio.google.com/app/api-keys")
             print("-" * 50)
-            input_key = input()
+            input_key = input("API KEY: ").strip()
 
             SqliteManager().insert(table=KEY_TABLE_NAME, data={"api_key": input_key})
             api_key = input_key
