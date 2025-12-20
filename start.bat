@@ -1,31 +1,28 @@
 @echo off
-:: 1. 인코딩 설정
-chcp 65001 >nul
+setlocal
 
-:: 2. uv 경로 설정 (일단 uv가 있다고 가정)
-set "UV_EXE=uv"
-
-:: 3. 만약 uv가 명령어로 안 먹히면 직접 경로 찾기
+:: 1. uv 설치 여부 확인
 where uv >nul 2>&1
-if %errorlevel% neq 0 set "UV_EXE=%LOCALAPPDATA%\uv\bin\uv.exe"
-
-:: 4. 실행 전 파일 체크
-echo [1/2] Syncing...
-%UV_EXE% sync
 if %errorlevel% neq 0 (
-    echo Sync failed. Check your pyproject.toml
-    pause
-    exit /b
-)
-
-echo [2/2] Running app...
-%UV_EXE% run main.py
-if %errorlevel% neq 0 (
-    echo App crashed. Check the error message above.
-    pause
-    exit /b
+    echo [!] uv를 찾을 수 없습니다. 설치를 시작합니다...
+    :: 파워쉘을 이용해 uv 공식 설치 스크립트 실행
+    powershell -ExecutionPolicy ByRemoteSigning -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    
+    :: 설치 직후에는 시스템 PATH가 바로 반영 안 되므로, 직접 경로를 지정해서 사용함
+    set "UV_EXE=%LOCALAPPDATA%\uv\bin\uv.exe"
+) else (
+    set "UV_EXE=uv"
 )
 
 echo.
-echo Done.
+echo [1/2] 라이브러리 동기화 및 업데이트 확인 중...
+:: %UV_EXE%를 사용해서 설치 직후에도 바로 실행 가능하게 함
+"%UV_EXE%" sync
+
+echo.
+echo [2/2] 프로그램 실행 중: main.py
+"%UV_EXE%" run main.py
+
+echo.
+echo 실행이 완료되었습니다.
 pause
