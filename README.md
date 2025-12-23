@@ -12,6 +12,12 @@
 powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/goeha-building/goeha-words/refs/heads/master/setup.ps1 | iex"
 ```
 
+### API 키 설정하기
+
+API키 설정방법
+
+![alt](/attatched/set_api_key.png)
+
 ---
 
 ## 컨셉
