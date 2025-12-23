@@ -23,6 +23,7 @@ API키 설정방법
 ## 컨셉
 
 ![alt](/attatched/concept_01.jpg)
+![alt](/attatched/concept_02.jpg)
 
 ## 🌟 핵심 기능: AI 작문 & 실시간 피드백
 
