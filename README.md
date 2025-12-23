@@ -14,6 +14,10 @@ powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/goe
 
 ---
 
+## 컨셉
+
+![alt](/attatched/concept_01.jpg)
+
 ## 🌟 핵심 기능: AI 작문 & 실시간 피드백
 
 이 프로그램의 가장 핵심적인 기능입니다. 단어의 뜻만 외우는 것이 아니라, 실제 문맥에서 올바르게 사용하는지 AI가 검사해줍니다!
