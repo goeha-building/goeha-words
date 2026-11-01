@@ -88,3 +88,7 @@ goeha-words/
 ├── pyproject.toml      # 프로젝트 설정
 └── README.md           # 설명서
 ```
+
+---
+
+### 울산중앙중 30308 정다정
